@@ -1,4 +1,4 @@
-#  cluster_cost_calculator_ui_improved.py
+# cluster_cost_calculator_ui_improved.py
 
 import streamlit as st
 from math import ceil
@@ -89,10 +89,10 @@ def main():
     Aquesta aplicació permet calcular els costos i els temps d'execució dels **Job Clusters** i **All-Purpose Clusters** segons la seva configuració i les tasques que han de realitzar.
     """)
     
-    # Barra lateral per a inputs
-    st.sidebar.header("🛠️ Configuració")
+    # Taula Resum dels Costos de les Instàncies
+    st.header("📋 Resum dels Costos de les Instàncies")
     
-    # Define available VM instances (incloent RAM)
+    # Definir les instàncies disponibles (incloent RAM)
     instancies = [
         VMInstance('DS4_V2', 8, 1.5, 0.5219, 32),
         VMInstance('D4A_V4', 4, 0.75, 0.2207, 16),
@@ -101,14 +101,29 @@ def main():
         VMInstance('D4DS_V5', 4, 1.0, 0.2610, 16)
     ]
     
-    # Instance selection
+    # Crear un DataFrame amb els detalls de les instàncies
+    data_instances = pd.DataFrame({
+        'Nom de la Instància': [inst.name for inst in instancies],
+        'vCPUs': [inst.vCPUs for inst in instancies],
+        'DBUs': [inst.DBUs for inst in instancies],
+        'Cost per hora (€)': [inst.cost_per_hour for inst in instancies],
+        'RAM (GB)': [inst.RAM_GB for inst in instancies]
+    })
+    
+    # Mostrar la taula
+    st.table(data_instances)
+    
+    # Barra lateral per a inputs
+    st.sidebar.header("🛠️ Configuració")
+    
+    # Selecció d'instància
     instance_names = [inst.name for inst in instancies]
     selected_instance_name = st.sidebar.selectbox("🔍 Tipus d'instància", instance_names)
     instancia = next(inst for inst in instancies if inst.name == selected_instance_name)
     
     st.sidebar.markdown("---")
     
-    # User inputs
+    # Inputs de l'usuari
     temps_execucio_per_tasca_min = st.sidebar.number_input("⏱️ Temps d'execució per tasca (minuts)", min_value=0.1, value=10.0, step=0.1)
     nombre_tasques = st.sidebar.number_input("🔢 Nombre de tasques", min_value=1, value=100, step=1)
     nombre_workers_all_purpose = st.sidebar.number_input("👥 Nombre de workers (All-Purpose)", min_value=1, value=5, step=1)
@@ -126,7 +141,7 @@ def main():
     cost_vm_job_workers = nodes_job_workers * instancia.cost_per_hour
     cost_vm_job_total = cost_vm_job_driver + cost_vm_job_workers
     
-    # Calculate Job Cluster cost per task
+    # Càlcul del cost per tasca en Job Cluster
     cost_per_tasca_job, cost_vm_total_job, cost_dbu_execucio_job, temps_total_min_job = calcular_cost_job_cluster(
         driver_cost_per_hour=cost_vm_job_driver,
         worker_cost_per_hour=cost_vm_job_workers,
@@ -145,8 +160,8 @@ def main():
     cost_vm_all_purpose_workers = nodes_all_purpose_workers * instancia.cost_per_hour
     cost_vm_all_purpose_total = cost_vm_all_purpose_driver + cost_vm_all_purpose_workers
     
-    # Calculate All-Purpose Cluster cost
-    tasks_per_worker = 1  # Limiting to one task per worker
+    # Càlcul del cost en All-Purpose Cluster
+    tasks_per_worker = 1  # Limitar a una tasca per worker
     total_parallel_tasks = nombre_workers_all_purpose * tasks_per_worker
     nombre_onades = ceil(nombre_tasques / total_parallel_tasks)
     temps_execucio_total_min = nombre_onades * temps_execucio_per_tasca_min
