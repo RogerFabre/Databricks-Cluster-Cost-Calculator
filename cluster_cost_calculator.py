@@ -55,12 +55,12 @@ def calcular_cost_all_purpose(driver_cost_per_hour, workers_cost_per_hour, total
 # Streamlit App
 def main():
     # Configura la pàgina
-    st.set_page_config(page_title="📊 Databricks Cluster Cost Calculator", layout="wide", initial_sidebar_state="expanded")
+    st.set_page_config(page_title="📊 Cluster Cost Calculator", layout="wide", initial_sidebar_state="expanded")
     
     # Títol principal amb Logo
     col_title, col_logo = st.columns([4, 1])  # Proporció 4:1 per tenir el títol més gran que el logo
     with col_title:
-        st.title("📊 Databricks Cluster Cost Calculator")
+        st.title("📊 Cluster Cost Calculator")
     with col_logo:
         try:
             st.image("logo.png", width=200)  # Assegura't que 'logo.png' estigui al mateix directori
@@ -92,8 +92,25 @@ def main():
         'RAM (GB)': [inst.RAM_GB for inst in instancies]
     })
     
-    # Mostrar la taula
-    st.table(data_instances)
+    # Crear el DataFrame per als costos per tipus de càlcul
+    data_compute_costs = pd.DataFrame({
+        'Compute Type': ['All-Purpose Compute', 'Jobs Compute'],
+        '€/DBU-hora': [
+            f"{0.528:.3f}".replace('.', ',') + ' €',
+            f"{0.288:.3f}".replace('.', ',') + ' €'
+        ]
+    })
+    
+    # Crear dues columnes per mostrar les dues taules una al costat de l'altra
+    col_instances, col_compute_costs = st.columns(2)
+    
+    with col_instances:
+        st.subheader("Instàncies Disponibles")
+        st.table(data_instances)
+    
+    with col_compute_costs:
+        st.subheader("Costos per Tipus de Càlcul")
+        st.table(data_compute_costs)
     
     # Barra lateral per a inputs
     st.sidebar.header("🛠️ Configuració")
