@@ -88,7 +88,7 @@ def main():
         'Nom de la Instància': [inst.name for inst in instancies],
         'vCPUs': [inst.vCPUs for inst in instancies],
         'DBUs': [inst.DBUs for inst in instancies],
-        'Cost per hora (€)': [inst.cost_per_hour for inst in instancies],
+        '€/VMs-hora': [inst.cost_per_hour for inst in instancies],
         'RAM (GB)': [inst.RAM_GB for inst in instancies]
     })
     
