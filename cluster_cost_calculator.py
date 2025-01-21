@@ -55,10 +55,18 @@ def calcular_cost_all_purpose(driver_cost_per_hour, workers_cost_per_hour, total
 # Streamlit App
 def main():
     # Configura la pàgina
-    st.set_page_config(page_title="📊 Cluster Cost Calculator", layout="wide", initial_sidebar_state="expanded")
+    st.set_page_config(page_title="📊 Databricks Cluster Cost Calculator", layout="wide", initial_sidebar_state="expanded")
     
-    # Títol principal
-    st.title("📊 Cluster Cost Calculator")
+    # Títol principal amb Logo
+    col_title, col_logo = st.columns([4, 1])  # Proporció 4:1 per tenir el títol més gran que el logo
+    with col_title:
+        st.title("📊 Databricks Cluster Cost Calculator")
+    with col_logo:
+        try:
+            st.image("logo.png", width=200)  # Assegura't que 'logo.png' estigui al mateix directori
+        except:
+            st.write("![Logo](https://via.placeholder.com/200)")  # Placeholder si no es troba l'arxiu
+    
     st.markdown("""
     Aquesta aplicació permet calcular els costos i els temps d'execució dels **Job Clusters** i **All-Purpose Clusters** segons la seva configuració i les tasques que han de realitzar.
     """)
@@ -90,10 +98,14 @@ def main():
     # Barra lateral per a inputs
     st.sidebar.header("🛠️ Configuració")
     
-    # Selecció d'instància
+    # Selecció d'instància per al Job Cluster
     instance_names = [inst.name for inst in instancies]
-    selected_instance_name = st.sidebar.selectbox("🔍 Tipus d'instància", instance_names)
-    instancia = next(inst for inst in instancies if inst.name == selected_instance_name)
+    selected_instance_job = st.sidebar.selectbox("🔍 Tipus d'instància per al **Job Cluster**", instance_names, index=0)
+    instancia_job = next(inst for inst in instancies if inst.name == selected_instance_job)
+    
+    # Selecció d'instància per a l'All-Purpose Cluster
+    selected_instance_all_purpose = st.sidebar.selectbox("🔍 Tipus d'instància per a l'**All-Purpose Cluster**", instance_names, index=1)
+    instancia_all_purpose = next(inst for inst in instancies if inst.name == selected_instance_all_purpose)
     
     st.sidebar.markdown("---")
     
@@ -111,9 +123,9 @@ def main():
     # Configuració Job Cluster
     nodes_job_driver = 1
     nodes_job_workers = 1
-    total_DBUs_job = (nodes_job_driver + nodes_job_workers) * instancia.DBUs
-    cost_vm_job_driver = nodes_job_driver * instancia.cost_per_hour
-    cost_vm_job_workers = nodes_job_workers * instancia.cost_per_hour
+    total_DBUs_job = (nodes_job_driver + nodes_job_workers) * instancia_job.DBUs
+    cost_vm_job_driver = nodes_job_driver * instancia_job.cost_per_hour
+    cost_vm_job_workers = nodes_job_workers * instancia_job.cost_per_hour
     cost_vm_job_total = cost_vm_job_driver + cost_vm_job_workers
     
     # Càlcul del cost per tasca en Job Cluster amb limitació de paral·lelisme
@@ -132,9 +144,9 @@ def main():
     # Configuració All-Purpose Cluster
     nodes_all_purpose_driver = 1
     nodes_all_purpose_workers = nombre_workers_all_purpose
-    dbus_all_purpose = (nodes_all_purpose_driver + nodes_all_purpose_workers) * instancia.DBUs
-    cost_vm_all_purpose_driver = nodes_all_purpose_driver * instancia.cost_per_hour
-    cost_vm_all_purpose_workers = nodes_all_purpose_workers * instancia.cost_per_hour
+    dbus_all_purpose = (nodes_all_purpose_driver + nodes_all_purpose_workers) * instancia_all_purpose.DBUs
+    cost_vm_all_purpose_driver = nodes_all_purpose_driver * instancia_all_purpose.cost_per_hour
+    cost_vm_all_purpose_workers = nodes_all_purpose_workers * instancia_all_purpose.cost_per_hour
     cost_vm_all_purpose_total = cost_vm_all_purpose_driver + cost_vm_all_purpose_workers
     
     # Càlcul del cost en All-Purpose Cluster
@@ -161,11 +173,12 @@ def main():
         # Secció de Detalls del Clúster
         with st.expander("📋 Detalls del Job Cluster"):
             st.markdown(f"""
+            - **Tipus d'Instància**: {instancia_job.name}
             - **Nombre de Drivers**: {nodes_job_driver}
             - **Nombre de Workers**: {nodes_job_workers}
-            - **vCPUs per Node**: {instancia.vCPUs}
-            - **DBUs per Node**: {instancia.DBUs}
-            - **RAM per Node**: {instancia.RAM_GB} GB
+            - **vCPUs per Node**: {instancia_job.vCPUs}
+            - **DBUs per Node**: {instancia_job.DBUs}
+            - **RAM per Node**: {instancia_job.RAM_GB} GB
             """)
         
         # Secció de Càlculs de Cost
@@ -213,11 +226,12 @@ def main():
         # Secció de Detalls del Clúster
         with st.expander("📋 Detalls de l'All-Purpose Cluster"):
             st.markdown(f"""
+            - **Tipus d'Instància**: {instancia_all_purpose.name}
             - **Nombre de Drivers**: {nodes_all_purpose_driver}
             - **Nombre de Workers**: {nodes_all_purpose_workers}
-            - **vCPUs per Node**: {instancia.vCPUs}
-            - **DBUs per Node**: {instancia.DBUs}
-            - **RAM per Node**: {instancia.RAM_GB} GB
+            - **vCPUs per Node**: {instancia_all_purpose.vCPUs}
+            - **DBUs per Node**: {instancia_all_purpose.DBUs}
+            - **RAM per Node**: {instancia_all_purpose.RAM_GB} GB
             """)
         
         # Secció de Càlculs de Cost
