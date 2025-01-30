@@ -24,10 +24,10 @@ def calcular_cost_job_cluster(driver_cost_per_hour, worker_cost_per_hour, total_
     temps_total_min_job = nombre_onades_job * (temps_overhead_min + temps_execucio_min)
     
     # Càlcul del Cost de les VM durant l'overhead i l'execució
-    cost_vm_total_job = (temps_total_min_job / 60) * (driver_cost_per_hour + worker_cost_per_hour)
+    cost_vm_total_job = ((temps_overhead_min + temps_execucio_min) / 60) * (driver_cost_per_hour + worker_cost_per_hour)
     
     # Càlcul del Cost de les DBUs durant l'execució
-    cost_dbu_execucio_job = (temps_execucio_min / 60) * total_DBUs * cost_dbu_job * nombre_onades_job
+    cost_dbu_execucio_job = (temps_execucio_min / 60) * total_DBUs * cost_dbu_job
     
     # Càlcul del Cost Total per Tasca
     cost_total_per_tasca_job = cost_vm_total_job + cost_dbu_execucio_job
@@ -215,13 +215,13 @@ def main():
                 - **Fórmula**: Nombre d'Etapes * Temps Total Actiu per Etapa
                 - **Aplicació**: {nombre_onades_job} etapes * {temps_execucio_per_tasca_min + temps_overhead_min} minuts = **{temps_total_min_job} minuts**
             
-            4. **Cost de les VM durant el Temps Total Actiu**:
-                - **Fórmula**: (Temps Total Actiu / 60) * (Cost Driver + Cost Workers)
-                - **Aplicació**: ({temps_total_min_job} minuts / 60) * (€{cost_vm_job_driver} + €{cost_vm_job_workers}) = **€{cost_vm_total_job:.4f}**
+            4. **Cost de les VM per Tasca**:
+                - **Fórmula**: (Temps Overhead + Temps Execució Tasca) / 60) * (Cost Driver + Cost Workers)
+                - **Aplicació**: ({temps_overhead_min + temps_execucio_per_tasca_min} minuts / 60) * (€{cost_vm_job_driver} + €{cost_vm_job_workers}) = **€{cost_vm_total_job:.4f}**
             
             5. **Cost de les DBUs durant l'Execució**:
-                - **Fórmula**: (Temps Execució per Tasca / 60) * Total DBUs * Cost per DBU-hora * Nombre d'Etapes
-                - **Aplicació**: ({temps_execucio_per_tasca_min} minuts / 60) * {total_DBUs_job} DBUs * €{cost_dbu_job} per DBU-hora * {nombre_onades_job} etapes = **€{cost_dbu_execucio_job:.4f}**
+                - **Fórmula**: (Temps Execució per Tasca / 60) * Total DBUs * Cost per DBU-hora 
+                - **Aplicació**: ({temps_execucio_per_tasca_min} minuts / 60) * {total_DBUs_job} DBUs * €{cost_dbu_job} per DBU-hora  = **€{cost_dbu_execucio_job:.4f}**
             
             6. **Cost Total per Tasca**:
                 - **Fórmula**: Cost VM Total + Cost DBU Execució
