@@ -38,14 +38,14 @@ def calcular_cost_all_purpose(driver_cost_per_hour, workers_cost_per_hour, total
     """
     Calcula el cost total en un All-Purpose Cluster.
     """
-    # Càlcul del Cost de les DBUs per hora
-    cost_dbu_all_purpose_per_hour = total_DBUs * cost_dbu_all_purpose
-
     # Càlcul del Cost de les VM per hora
     cost_vm_all_purpose_per_hour = driver_cost_per_hour + workers_cost_per_hour
 
+    # Càlcul del Cost de les DBUs per hora
+    cost_dbu_all_purpose_per_hour = total_DBUs * cost_dbu_all_purpose
+
     # Càlcul del Cost Total per hora All-Purpose
-    cost_total_per_hour_all_purpose = cost_dbu_all_purpose_per_hour + cost_vm_all_purpose_per_hour
+    cost_total_per_hour_all_purpose = cost_vm_all_purpose_per_hour + cost_dbu_all_purpose_per_hour
 
     # Càlcul del Cost Total All-Purpose durant l'Actiu
     cost_total_all_purpose = (temps_total_actiu_min / 60) * cost_total_per_hour_all_purpose
@@ -235,12 +235,12 @@ def main():
                 - **Aplicació**: {nombre_onades_job} onades * {temps_execucio_per_tasca_min + temps_overhead_min} minuts = **{temps_total_min_job} minuts**
             
             4. **Cost de les VM per Tasca**:
-                - **Fórmula**: (Temps Overhead + Temps Execució Tasca) / 60) * (Cost Driver + Cost Workers)
-                - **Aplicació**: ({temps_overhead_min + temps_execucio_per_tasca_min} minuts / 60) * (€{cost_vm_job_driver} + €{cost_vm_job_workers}) = **€{cost_vm_total_job:.4f}**
+                - **Fórmula**: ((Temps Overhead + Temps Execució Tasca) / 60) * (Cost Driver + Cost Workers)
+                - **Aplicació**: (({temps_overhead_min} + {temps_execucio_per_tasca_min}) / 60) * (€{cost_vm_job_driver} + €{cost_vm_job_workers}) = **€{cost_vm_total_job:.4f}**
             
             5. **Cost de les DBUs durant l'Execució**:
                 - **Fórmula**: (Temps Execució per Tasca / 60) * Total DBUs * Cost per DBU-hora 
-                - **Aplicació**: ({temps_execucio_per_tasca_min} minuts / 60) * {total_DBUs_job} DBUs * €{cost_dbu_job} per DBU-hora  = **€{cost_dbu_execucio_job:.4f}**
+                - **Aplicació**: ({temps_execucio_per_tasca_min} / 60) * {total_DBUs_job} DBUs * €{cost_dbu_job} = **€{cost_dbu_execucio_job:.4f}**
             
             6. **Cost Total per Tasca**:
                 - **Fórmula**: Cost VM Total + Cost DBU Execució
@@ -279,24 +279,33 @@ def main():
             st.markdown(f"""
             **Passos per calcular el cost total en un All-Purpose Cluster:**
             
-            1. **Càlcul del Cost de les DBUs per hora**:
-                - **Fórmula**: Total DBUs * Cost per DBU-hora
-                - **Aplicació**: {dbus_all_purpose} DBUs * €{cost_dbu_all_purpose} per DBU-hora = **€{cost_dbu_all_purpose_per_hour:.4f} €/h**
+            1. **Nombre d'Onades**:
+                - **Fórmula**: Nombre de Tasques / Nombre de Workers
+                - **Aplicació**: {nombre_tasques} tasques / {nombre_workers_all_purpose} workers = {nombre_onades_all_purpose} onades
             
-            2. **Càlcul del Cost de les VM per hora**:
-                - **Fórmula**: Cost Driver + Cost Workers
-                - **Aplicació**: €{cost_vm_all_purpose_driver} + €{cost_vm_all_purpose_workers} = **€{cost_vm_all_purpose_per_hour:.4f} €/h**
+            2. **Temps Total Actiu per Onada**:
+                - **Fórmula**: Temps d'Execució per Tasca + Temps Overhead
+                - **Aplicació**: {temps_execucio_per_tasca_min} minuts + {temps_overhead_min} minuts = {temps_execucio_per_tasca_min + temps_overhead_min} minuts
             
-            3. **Càlcul del Cost Total per hora All-Purpose**:
-                - **Fórmula**: Cost DBU All-Purpose per hora + Cost VM All-Purpose per hora
-                - **Aplicació**: €{cost_dbu_all_purpose_per_hour:.4f} €/h + €{cost_vm_all_purpose_per_hour:.4f} €/h = **€{cost_total_per_hour_all_purpose:.4f} €/h**
+            3. **Temps Total Actiu**:
+                - **Fórmula**: Nombre d'Onades * Temps Total Actiu per Onada
+                - **Aplicació**: {nombre_onades_all_purpose} onades * {temps_execucio_per_tasca_min + temps_overhead_min} minuts = **{temps_total_actiu_min_all_purpose} minuts**
             
-            4. **Càlcul del Cost Total All-Purpose durant l'Actiu**:
-                - **Onades**: {nombre_tasques} tasques / {nombre_workers_all_purpose} workers = {nombre_onades_all_purpose} onades
-                - **Temps total actiu**: {nombre_onades_all_purpose} onades * {temps_execucio_per_tasca_min} minuts tasca + {temps_overhead_min} minuts overhead = {temps_total_actiu_min_all_purpose} minuts
-                
-                - **Fórmula**: (Temps Total Actiu / 60) * Cost Total per hora All-Purpose
-                - **Aplicació**: ({temps_total_actiu_min_all_purpose} minuts / 60) * €{cost_total_per_hour_all_purpose:.4f} €/h = **€{cost_total_all_purpose:.4f}**
+            4. **Cost de les VM per Onada**:
+                - **Fórmula**: (Temps Overhead + Temps Execució Tasca) / 60) * (Cost Driver + Cost Workers)
+                - **Aplicació**: (({temps_overhead_min} + {temps_execucio_per_tasca_min}) / 60) * (€{cost_vm_all_purpose_driver} + €{cost_vm_all_purpose_workers}) = **€{(temps_overhead_min + temps_execucio_per_tasca_min)/60 * (cost_vm_all_purpose_driver + cost_vm_all_purpose_workers):.4f}**
+            
+            5. **Cost de les DBUs durant l'Execució**:
+                - **Fórmula**: (Temps Execució per Tasca / 60) * Total DBUs * Cost per DBU-hora 
+                - **Aplicació**: ({temps_execucio_per_tasca_min} / 60) * {dbus_all_purpose} DBUs * €{cost_dbu_all_purpose} = **€{(temps_execucio_per_tasca_min / 60) * dbus_all_purpose * cost_dbu_all_purpose:.4f}**
+            
+            6. **Cost Total per Onada**:
+                - **Fórmula**: Cost VM per Onada + Cost DBU Execució
+                - **Aplicació**: €{((temps_overhead_min + temps_execucio_per_tasca_min)/60) * (cost_vm_all_purpose_driver + cost_vm_all_purpose_workers):.4f} + €{(temps_execucio_per_tasca_min / 60) * dbus_all_purpose * cost_dbu_all_purpose:.4f} = **€{(((temps_overhead_min + temps_execucio_per_tasca_min)/60) * (cost_vm_all_purpose_driver + cost_vm_all_purpose_workers)) + ((temps_execucio_per_tasca_min / 60) * dbus_all_purpose * cost_dbu_all_purpose):.4f}**
+            
+            7. **Cost Total de l'All-Purpose Cluster**:
+                - **Fórmula**: Nombre d'Onades * Cost Total per Onada
+                - **Aplicació**: {nombre_onades_all_purpose} onades * €{(((temps_overhead_min + temps_execucio_per_tasca_min)/60) * (cost_vm_all_purpose_driver + cost_vm_all_purpose_workers)) + ((temps_execucio_per_tasca_min / 60) * dbus_all_purpose * cost_dbu_all_purpose):.4f} = **€{cost_total_all_purpose:.4f}**
             """)
         
         # Metrics per All-Purpose Cluster
