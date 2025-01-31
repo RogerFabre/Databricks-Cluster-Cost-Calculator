@@ -115,21 +115,36 @@ def main():
     # Barra lateral per a inputs
     st.sidebar.header("🛠️ Configuració")
     
-    # Selecció d'instància per al Job Cluster
+    # Selecció d'instància per al Job Cluster - Driver
     instance_names = [inst.name for inst in instancies]
-    selected_instance_job = st.sidebar.selectbox("🔍 Tipus d'instància per al **Job Cluster**", instance_names, index=0)
-    instancia_job = next(inst for inst in instancies if inst.name == selected_instance_job)
+    selected_instance_job_driver = st.sidebar.selectbox("🔍 Tipus d'instància per al **Driver del Job Cluster**", instance_names, index=0)
+    instancia_job_driver = next(inst for inst in instancies if inst.name == selected_instance_job_driver)
     
-    # Selecció d'instància per a l'All-Purpose Cluster
-    selected_instance_all_purpose = st.sidebar.selectbox("🔍 Tipus d'instància per a l'**All-Purpose Cluster**", instance_names, index=1)
-    instancia_all_purpose = next(inst for inst in instancies if inst.name == selected_instance_all_purpose)
+    # Selecció d'instància per al Job Cluster - Workers
+    selected_instance_job_worker = st.sidebar.selectbox("🔍 Tipus d'instància per als **Workers del Job Cluster**", instance_names, index=1)
+    instancia_job_worker = next(inst for inst in instancies if inst.name == selected_instance_job_worker)
+    
+    # Selecció del nombre de workers per al Job Cluster
+    nombre_workers_job = st.sidebar.number_input("👥 Nombre de workers (Job Cluster)", min_value=1, value=1, step=1)
+    
+    st.sidebar.markdown("---")
+    
+    # Selecció d'instància per a l'All-Purpose Cluster - Driver
+    selected_instance_all_purpose_driver = st.sidebar.selectbox("🔍 Tipus d'instància per al **Driver de l'All-Purpose Cluster**", instance_names, index=2)
+    instancia_all_purpose_driver = next(inst for inst in instancies if inst.name == selected_instance_all_purpose_driver)
+    
+    # Selecció d'instància per a l'All-Purpose Cluster - Workers
+    selected_instance_all_purpose_worker = st.sidebar.selectbox("🔍 Tipus d'instància per als **Workers de l'All-Purpose Cluster**", instance_names, index=3)
+    instancia_all_purpose_worker = next(inst for inst in instancies if inst.name == selected_instance_all_purpose_worker)
+    
+    # Selecció del nombre de workers per a l'All-Purpose Cluster
+    nombre_workers_all_purpose = st.sidebar.number_input("👥 Nombre de workers (All-Purpose)", min_value=1, value=5, step=1)
     
     st.sidebar.markdown("---")
     
     # Inputs de l'usuari
     temps_execucio_per_tasca_min = st.sidebar.number_input("⏱️ Temps d'execució per tasca (minuts)", min_value=0.1, value=10.0, step=0.1)
     nombre_tasques = st.sidebar.number_input("🔢 Nombre de tasques", min_value=1, value=100, step=1)
-    nombre_workers_all_purpose = st.sidebar.number_input("👥 Nombre de workers (All-Purpose)", min_value=1, value=5, step=1)
     max_parallel_tasks_job = st.sidebar.number_input("⚙️ Nombre màxim de tasques en paral·lel (Job Cluster)", min_value=1, value=35, step=1)
     
     # Constants
@@ -139,10 +154,10 @@ def main():
     
     # Configuració Job Cluster
     nodes_job_driver = 1
-    nodes_job_workers = 1
-    total_DBUs_job = (nodes_job_driver + nodes_job_workers) * instancia_job.DBUs
-    cost_vm_job_driver = nodes_job_driver * instancia_job.cost_per_hour
-    cost_vm_job_workers = nodes_job_workers * instancia_job.cost_per_hour
+    nodes_job_workers = nombre_workers_job
+    total_DBUs_job = (nodes_job_driver * instancia_job_driver.DBUs) + (nodes_job_workers * instancia_job_worker.DBUs)
+    cost_vm_job_driver = nodes_job_driver * instancia_job_driver.cost_per_hour
+    cost_vm_job_workers = nodes_job_workers * instancia_job_worker.cost_per_hour
     cost_vm_job_total = cost_vm_job_driver + cost_vm_job_workers
     
     # Càlcul del cost per tasca en Job Cluster amb limitació de paral·lelisme
@@ -161,9 +176,9 @@ def main():
     # Configuració All-Purpose Cluster
     nodes_all_purpose_driver = 1
     nodes_all_purpose_workers = nombre_workers_all_purpose
-    dbus_all_purpose = (nodes_all_purpose_driver + nodes_all_purpose_workers) * instancia_all_purpose.DBUs
-    cost_vm_all_purpose_driver = nodes_all_purpose_driver * instancia_all_purpose.cost_per_hour
-    cost_vm_all_purpose_workers = nodes_all_purpose_workers * instancia_all_purpose.cost_per_hour
+    dbus_all_purpose = (nodes_all_purpose_driver * instancia_all_purpose_driver.DBUs) + (nodes_all_purpose_workers * instancia_all_purpose_worker.DBUs)
+    cost_vm_all_purpose_driver = nodes_all_purpose_driver * instancia_all_purpose_driver.cost_per_hour
+    cost_vm_all_purpose_workers = nodes_all_purpose_workers * instancia_all_purpose_worker.cost_per_hour
     cost_vm_all_purpose_total = cost_vm_all_purpose_driver + cost_vm_all_purpose_workers
     
     # Càlcul del cost en All-Purpose Cluster
@@ -190,12 +205,16 @@ def main():
         # Secció de Detalls del Clúster
         with st.expander("📋 Detalls del Job Cluster"):
             st.markdown(f"""
-            - **Tipus d'Instància**: {instancia_job.name}
+            - **Tipus d'Instància del Driver**: {instancia_job_driver.name}
+            - **Tipus d'Instància dels Workers**: {instancia_job_worker.name}
             - **Nombre de Drivers**: {nodes_job_driver}
             - **Nombre de Workers**: {nodes_job_workers}
-            - **vCPUs per Node**: {instancia_job.vCPUs}
-            - **DBUs per Node**: {instancia_job.DBUs}
-            - **RAM per Node**: {instancia_job.RAM_GB} GB
+            - **vCPUs per Driver**: {instancia_job_driver.vCPUs}
+            - **vCPUs per Worker**: {instancia_job_worker.vCPUs}
+            - **DBUs per Driver**: {instancia_job_driver.DBUs}
+            - **DBUs per Worker**: {instancia_job_worker.DBUs}
+            - **RAM per Driver**: {instancia_job_driver.RAM_GB} GB
+            - **RAM per Worker**: {instancia_job_worker.RAM_GB} GB
             """)
         
         # Secció de Càlculs de Cost
@@ -203,17 +222,17 @@ def main():
             st.markdown(f"""
             **Passos per calcular el cost total en un Job Cluster:**
             
-            1. **Nombre d'Etapes (Onades)**:
+            1. **Nombre d'Onades**:
                 - **Fórmula**: Nombre de Tasques / Nombre màxim de Tasques en Paral·lel
-                - **Aplicació**: {nombre_tasques} tasques / {max_parallel_tasks_job} tasques = {nombre_onades_job} etapes
+                - **Aplicació**: {nombre_tasques} tasques / {max_parallel_tasks_job} tasques = {nombre_onades_job} onades
             
-            2. **Temps Total Actiu per Etapa**:
+            2. **Temps Total Actiu per Onada**:
                 - **Fórmula**: Temps d'Execució per Tasca + Temps Overhead
                 - **Aplicació**: {temps_execucio_per_tasca_min} minuts + {temps_overhead_min} minuts = {temps_execucio_per_tasca_min + temps_overhead_min} minuts
             
             3. **Temps Total Actiu**:
-                - **Fórmula**: Nombre d'Etapes * Temps Total Actiu per Etapa
-                - **Aplicació**: {nombre_onades_job} etapes * {temps_execucio_per_tasca_min + temps_overhead_min} minuts = **{temps_total_min_job} minuts**
+                - **Fórmula**: Nombre d'Onades * Temps Total Actiu per Onada
+                - **Aplicació**: {nombre_onades_job} onades * {temps_execucio_per_tasca_min + temps_overhead_min} minuts = **{temps_total_min_job} minuts**
             
             4. **Cost de les VM per Tasca**:
                 - **Fórmula**: (Temps Overhead + Temps Execució Tasca) / 60) * (Cost Driver + Cost Workers)
@@ -243,12 +262,16 @@ def main():
         # Secció de Detalls del Clúster
         with st.expander("📋 Detalls de l'All-Purpose Cluster"):
             st.markdown(f"""
-            - **Tipus d'Instància**: {instancia_all_purpose.name}
+            - **Tipus d'Instància del Driver**: {instancia_all_purpose_driver.name}
+            - **Tipus d'Instància dels Workers**: {instancia_all_purpose_worker.name}
             - **Nombre de Drivers**: {nodes_all_purpose_driver}
             - **Nombre de Workers**: {nodes_all_purpose_workers}
-            - **vCPUs per Node**: {instancia_all_purpose.vCPUs}
-            - **DBUs per Node**: {instancia_all_purpose.DBUs}
-            - **RAM per Node**: {instancia_all_purpose.RAM_GB} GB
+            - **vCPUs per Driver**: {instancia_all_purpose_driver.vCPUs}
+            - **vCPUs per Worker**: {instancia_all_purpose_worker.vCPUs}
+            - **DBUs per Driver**: {instancia_all_purpose_driver.DBUs}
+            - **DBUs per Worker**: {instancia_all_purpose_worker.DBUs}
+            - **RAM per Driver**: {instancia_all_purpose_driver.RAM_GB} GB
+            - **RAM per Worker**: {instancia_all_purpose_worker.RAM_GB} GB
             """)
         
         # Secció de Càlculs de Cost
@@ -269,8 +292,8 @@ def main():
                 - **Aplicació**: €{cost_dbu_all_purpose_per_hour:.4f} €/h + €{cost_vm_all_purpose_per_hour:.4f} €/h = **€{cost_total_per_hour_all_purpose:.4f} €/h**
             
             4. **Càlcul del Cost Total All-Purpose durant l'Actiu**:
-                - **Etapes**: {nombre_tasques} tasques / {nombre_workers_all_purpose} workers = {nombre_onades_all_purpose} etapes
-                - **Temps total actiu**: {nombre_onades_all_purpose} etapes * {temps_execucio_per_tasca_min} minuts tasca + {temps_overhead_min} minuts overhead = {temps_total_actiu_min_all_purpose} minuts
+                - **Onades**: {nombre_tasques} tasques / {nombre_workers_all_purpose} workers = {nombre_onades_all_purpose} onades
+                - **Temps total actiu**: {nombre_onades_all_purpose} onades * {temps_execucio_per_tasca_min} minuts tasca + {temps_overhead_min} minuts overhead = {temps_total_actiu_min_all_purpose} minuts
                 
                 - **Fórmula**: (Temps Total Actiu / 60) * Cost Total per hora All-Purpose
                 - **Aplicació**: ({temps_total_actiu_min_all_purpose} minuts / 60) * €{cost_total_per_hour_all_purpose:.4f} €/h = **€{cost_total_all_purpose:.4f}**
@@ -349,7 +372,7 @@ def main():
     
     # Final Results and Conclusion
     st.header("🏆 Resultats Finals")
-    st.write(f"**Cost total Job Clusters:** €{cost_total_job:.4f}")
+    st.write(f"**Cost total Job Cluster:** €{cost_total_job:.4f}")
     st.write(f"**Cost total All-Purpose:** €{cost_total_all_purpose:.4f}")
     st.write(f"**Temps total actiu Job Cluster:** {temps_total_min_job} minuts")
     st.write(f"**Temps total actiu All-Purpose Cluster:** {temps_total_actiu_min_all_purpose} minuts")
@@ -358,13 +381,13 @@ def main():
     if cost_total_job < cost_total_all_purpose:
         estalvi = diferencia_cost
         percentatge_estalvi = (diferencia_cost / cost_total_all_purpose) * 100
-        st.success(f"La opció més econòmica és **Job Clusters**")
+        st.success(f"La opció més econòmica és **Job Cluster**")
         st.write(f"**Estalvi en Cost:** €{estalvi:.4f}")
         st.write(f"**Percentatge d'estalvi en Cost:** {percentatge_estalvi:.2f}%")
     else:
         estalvi = diferencia_cost
         percentatge_estalvi = (diferencia_cost / cost_total_job) * 100
-        st.success(f"La opció més econòmica és **All-Purpose**")
+        st.success(f"La opció més econòmica és **All-Purpose Cluster**")
         st.write(f"**Estalvi en Cost:** €{estalvi:.4f}")
         st.write(f"**Percentatge d'estalvi en Cost:** {percentatge_estalvi:.2f}%")
     
