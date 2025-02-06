@@ -13,68 +13,69 @@ class VMInstance:
         self.RAM_GB = RAM_GB  # Memòria RAM en GB
 
 # Define cost calculation functions
-def calcular_cost_job_cluster(driver_cost_per_hour, worker_cost_per_hour, total_DBUs, cost_dbu_job, temps_overhead_min, temps_execucio_min, max_parallel_tasks, total_tasks):
+def calcular_cost_job_cluster(driver_cost_per_hour, worker_cost_per_hour, total_DBUs, cost_dbu_job,
+                                startup_overhead_time, temps_execucio_min, max_parallel_tasks, total_tasks):
     """
     Calcula el cost total per tasca en un Job Cluster, considerant una limitació de tasques en paral·lel.
     """
     # Nombre d'onades necessàries
     nombre_onades_job = ceil(total_tasks / max_parallel_tasks)
     
-    # Temps total actiu incloent overhead
-    temps_total_min_job = nombre_onades_job * (temps_overhead_min + temps_execucio_min)
+    # Temps total actiu incloent el temps de spin-up per onada
+    temps_total_min_job = nombre_onades_job * (startup_overhead_time + temps_execucio_min)
     
-    # Càlcul del Cost de les VM durant l'overhead i l'execució
-    cost_vm_total_job = ((temps_overhead_min + temps_execucio_min) / 60) * (driver_cost_per_hour + worker_cost_per_hour)
+    # Càlcul del cost de les VM durant el spin-up i l'execució per onada
+    cost_vm_total_job = ((startup_overhead_time + temps_execucio_min) / 60) * (driver_cost_per_hour + worker_cost_per_hour)
     
-    # Càlcul del Cost de les DBUs durant l'execució
+    # Càlcul del cost de les DBUs durant l'execució per onada
     cost_dbu_execucio_job = (temps_execucio_min / 60) * total_DBUs * cost_dbu_job
     
-    # Càlcul del Cost Total per Tasca
+    # Càlcul del cost total per tasca
     cost_total_per_tasca_job = cost_vm_total_job + cost_dbu_execucio_job
     
     return cost_total_per_tasca_job, cost_vm_total_job, cost_dbu_execucio_job, temps_total_min_job, nombre_onades_job
 
-def calcular_cost_all_purpose(driver_cost_per_hour, workers_cost_per_hour, total_DBUs, cost_dbu_all_purpose, temps_total_actiu_min):
+def calcular_cost_all_purpose(driver_cost_per_hour, workers_cost_per_hour, total_DBUs, cost_dbu_all_purpose,
+                              temps_total_actiu_min):
     """
     Calcula el cost total en un All-Purpose Cluster.
     """
-    # Càlcul del Cost de les VM per hora
+    # Càlcul del cost de les VM per hora
     cost_vm_all_purpose_per_hour = driver_cost_per_hour + workers_cost_per_hour
 
-    # Càlcul del Cost de les DBUs per hora
+    # Càlcul del cost de les DBUs per hora
     cost_dbu_all_purpose_per_hour = total_DBUs * cost_dbu_all_purpose
 
-    # Càlcul del Cost Total per hora All-Purpose
+    # Càlcul del cost total per hora de l'All-Purpose Cluster
     cost_total_per_hour_all_purpose = cost_vm_all_purpose_per_hour + cost_dbu_all_purpose_per_hour
 
-    # Càlcul del Cost Total All-Purpose durant l'Actiu
+    # Càlcul del cost total en funció del temps actiu
     cost_total_all_purpose = (temps_total_actiu_min / 60) * cost_total_per_hour_all_purpose
 
     return cost_total_all_purpose, cost_dbu_all_purpose_per_hour, cost_vm_all_purpose_per_hour, cost_total_per_hour_all_purpose
 
 # Streamlit App
 def main():
-    # Configura la pàgina
+    # Configure the page
     st.set_page_config(page_title="📊 Cluster Cost Calculator", layout="wide", initial_sidebar_state="expanded")
     
-    # Títol principal amb Logo
-    col_title, col_logo = st.columns([4, 1])  # Proporció 4:1 per tenir el títol més gran que el logo
+    # Main title with logo
+    col_title, col_logo = st.columns([4, 1])
     with col_title:
         st.title("📊 Cluster Cost Calculator")
     with col_logo:
         try:
-            st.image("logo.png", width=200)  # Assegura't que 'logo.png' estigui al mateix directori
+            st.image("logo.png", width=200)
         except:
-            st.write("![Logo](https://via.placeholder.com/200)")  # Placeholder si no es troba l'arxiu
+            st.write("![Logo](https://via.placeholder.com/200)")
     
     st.markdown("""
     Aquesta aplicació permet calcular els costos i els temps d'execució dels **Job Clusters** i **All-Purpose Clusters** segons la seva configuració i les tasques que han de realitzar.
     """)
     
-    # Taula Resum dels Costos de les Instàncies
+    # Summary table of instance costs
     st.header("📋 Resum dels Costos de les Instàncies")
     
-    # Definir les instàncies disponibles (incloent RAM)
     instancies = [
         VMInstance('DS4_V2', 8, 1.5, 0.5219, 32),
         VMInstance('D4A_V4', 4, 0.75, 0.2207, 16),
@@ -83,7 +84,6 @@ def main():
         VMInstance('D4DS_V5', 4, 1.0, 0.2610, 16)
     ]
     
-    # Crear un DataFrame amb els detalls de les instàncies
     data_instances = pd.DataFrame({
         'Nom de la Instància': [inst.name for inst in instancies],
         'vCPUs': [inst.vCPUs for inst in instancies],
@@ -92,7 +92,6 @@ def main():
         'RAM (GB)': [inst.RAM_GB for inst in instancies]
     })
     
-    # Crear el DataFrame per als costos per tipus de càlcul
     data_compute_costs = pd.DataFrame({
         'Compute Type': ['All-Purpose Compute', 'Jobs Compute'],
         '€/DBU-hora': [
@@ -101,92 +100,95 @@ def main():
         ]
     })
     
-    # Crear dues columnes per mostrar les dues taules una al costat de l'altra
     col_instances, col_compute_costs = st.columns(2)
-    
     with col_instances:
         st.subheader("Instàncies Disponibles")
         st.table(data_instances)
-    
     with col_compute_costs:
         st.subheader("Costos per Tipus de Càlcul")
         st.table(data_compute_costs)
     
-    # Barra lateral per a inputs
+    # Sidebar inputs
     st.sidebar.header("🛠️ Configuració")
     
-    # Selecció d'instància per al Job Cluster - Driver
+    # --- Job Cluster Configuration ---
+    st.sidebar.subheader("Job Cluster Configuració")
     instance_names = [inst.name for inst in instancies]
     selected_instance_job_driver = st.sidebar.selectbox("🔍 Tipus d'instància per al **Driver del Job Cluster**", instance_names, index=0)
     instancia_job_driver = next(inst for inst in instancies if inst.name == selected_instance_job_driver)
     
-    # Selecció d'instància per al Job Cluster - Workers
     selected_instance_job_worker = st.sidebar.selectbox("🔍 Tipus d'instància per als **Workers del Job Cluster**", instance_names, index=1)
     instancia_job_worker = next(inst for inst in instancies if inst.name == selected_instance_job_worker)
     
-    # Selecció del nombre de workers per al Job Cluster
     nombre_workers_job = st.sidebar.number_input("👥 Nombre de workers (Job Cluster)", min_value=1, value=1, step=1)
+    
+    # New: Job Cluster maximum parallel tasks input
+    max_parallel_tasks_job = st.sidebar.number_input("⚙️ Nombre màxim de tasques en paral·lel (Job Cluster)", 
+                                                     min_value=1, value=35, step=1)
     
     st.sidebar.markdown("---")
     
-    # Selecció d'instància per a l'All-Purpose Cluster - Driver
+    # --- All-Purpose Cluster Configuration ---
+    st.sidebar.subheader("All-Purpose Cluster Configuració")
     selected_instance_all_purpose_driver = st.sidebar.selectbox("🔍 Tipus d'instància per al **Driver de l'All-Purpose Cluster**", instance_names, index=2)
     instancia_all_purpose_driver = next(inst for inst in instancies if inst.name == selected_instance_all_purpose_driver)
     
-    # Selecció d'instància per a l'All-Purpose Cluster - Workers
     selected_instance_all_purpose_worker = st.sidebar.selectbox("🔍 Tipus d'instància per als **Workers de l'All-Purpose Cluster**", instance_names, index=3)
     instancia_all_purpose_worker = next(inst for inst in instancies if inst.name == selected_instance_all_purpose_worker)
     
-    # Selecció del nombre de workers per a l'All-Purpose Cluster
     nombre_workers_all_purpose = st.sidebar.number_input("👥 Nombre de workers (All-Purpose)", min_value=1, value=5, step=1)
+    
+    # New: All-Purpose Cluster maximum parallel tasks input
+    max_parallel_tasks_all_purpose = st.sidebar.number_input("⚙️ Nombre màxim de tasques en paral·lel (All-Purpose)", 
+                                                             min_value=1, 
+                                                             value=nombre_workers_all_purpose, 
+                                                             step=1)
     
     st.sidebar.markdown("---")
     
-    # Inputs de l'usuari
+    # --- Task and Overhead Configuration ---
     temps_execucio_per_tasca_min = st.sidebar.number_input("⏱️ Temps d'execució per tasca (minuts)", min_value=0.1, value=10.0, step=0.1)
     nombre_tasques = st.sidebar.number_input("🔢 Nombre de tasques", min_value=1, value=100, step=1)
-    max_parallel_tasks_job = st.sidebar.number_input("⚙️ Nombre màxim de tasques en paral·lel (Job Cluster)", min_value=1, value=35, step=1)
     
-    # Constants
-    temps_overhead_min = 2.5
+    # New: Startup overhead time input (in minutes)
+    startup_overhead_time = st.sidebar.number_input("⏱️ Startup Overhead Time (minuts)", min_value=0.1, value=2.5, step=0.1)
+    
+    # Constants for DBU costs (remain unchanged)
     cost_dbu_job = 0.288
     cost_dbu_all_purpose = 0.528
     
-    # Configuració Job Cluster
+    # -------------------------------
+    # Job Cluster Calculations
     nodes_job_driver = 1
     nodes_job_workers = nombre_workers_job
     total_DBUs_job = (nodes_job_driver * instancia_job_driver.DBUs) + (nodes_job_workers * instancia_job_worker.DBUs)
     cost_vm_job_driver = nodes_job_driver * instancia_job_driver.cost_per_hour
     cost_vm_job_workers = nodes_job_workers * instancia_job_worker.cost_per_hour
-    cost_vm_job_total = cost_vm_job_driver + cost_vm_job_workers
     
-    # Càlcul del cost per tasca en Job Cluster amb limitació de paral·lelisme
     cost_per_tasca_job, cost_vm_total_job, cost_dbu_execucio_job, temps_total_min_job, nombre_onades_job = calcular_cost_job_cluster(
         driver_cost_per_hour=cost_vm_job_driver,
         worker_cost_per_hour=cost_vm_job_workers,
         total_DBUs=total_DBUs_job,
         cost_dbu_job=cost_dbu_job,
-        temps_overhead_min=temps_overhead_min,
+        startup_overhead_time=startup_overhead_time,
         temps_execucio_min=temps_execucio_per_tasca_min,
         max_parallel_tasks=max_parallel_tasks_job,
         total_tasks=nombre_tasques
     )
     cost_total_job = nombre_tasques * cost_per_tasca_job
     
-    # Configuració All-Purpose Cluster
+    # -------------------------------
+    # All-Purpose Cluster Calculations
     nodes_all_purpose_driver = 1
     nodes_all_purpose_workers = nombre_workers_all_purpose
     dbus_all_purpose = (nodes_all_purpose_driver * instancia_all_purpose_driver.DBUs) + (nodes_all_purpose_workers * instancia_all_purpose_worker.DBUs)
     cost_vm_all_purpose_driver = nodes_all_purpose_driver * instancia_all_purpose_driver.cost_per_hour
     cost_vm_all_purpose_workers = nodes_all_purpose_workers * instancia_all_purpose_worker.cost_per_hour
-    cost_vm_all_purpose_total = cost_vm_all_purpose_driver + cost_vm_all_purpose_workers
     
-    # Càlcul del cost en All-Purpose Cluster
-    tasks_per_worker_all_purpose = 1  # Limitar a una tasca per worker
-    total_parallel_tasks_all_purpose = nombre_workers_all_purpose * tasks_per_worker_all_purpose
+    total_parallel_tasks_all_purpose = max_parallel_tasks_all_purpose
     nombre_onades_all_purpose = ceil(nombre_tasques / total_parallel_tasks_all_purpose)
     temps_execucio_total_min_all_purpose = nombre_onades_all_purpose * temps_execucio_per_tasca_min
-    temps_total_actiu_min_all_purpose = temps_overhead_min + temps_execucio_total_min_all_purpose
+    temps_total_actiu_min_all_purpose = startup_overhead_time + temps_execucio_total_min_all_purpose
     
     cost_total_all_purpose, cost_dbu_all_purpose_per_hour, cost_vm_all_purpose_per_hour, cost_total_per_hour_all_purpose = calcular_cost_all_purpose(
         driver_cost_per_hour=cost_vm_all_purpose_driver,
@@ -196,13 +198,11 @@ def main():
         temps_total_actiu_min=temps_total_actiu_min_all_purpose
     )
     
-    # Layout principal amb columnes
+    # -------------------------------
+    # Display Results
     col1, col2 = st.columns(2)
-    
     with col1:
         st.header("📈 Resultats Job Cluster")
-        
-        # Secció de Detalls del Clúster
         with st.expander("📋 Detalls del Job Cluster"):
             st.markdown(f"""
             - **Tipus d'Instància del Driver**: {instancia_job_driver.name}
@@ -215,9 +215,8 @@ def main():
             - **DBUs per Worker**: {instancia_job_worker.DBUs}
             - **RAM per Driver**: {instancia_job_driver.RAM_GB} GB
             - **RAM per Worker**: {instancia_job_worker.RAM_GB} GB
+            - **Nombre màxim de tasques en paral·lel**: {max_parallel_tasks_job}
             """)
-        
-        # Secció de Càlculs de Cost
         with st.expander("💰 Càlculs de Cost Job Cluster"):
             st.markdown(f"""
             **Passos per calcular el cost total en un Job Cluster:**
@@ -227,39 +226,35 @@ def main():
                 - **Aplicació**: {nombre_tasques} tasques / {max_parallel_tasks_job} tasques = {nombre_onades_job} onades
             
             2. **Temps Total Actiu per Onada**:
-                - **Fórmula**: Temps d'Execució per Tasca + Temps Overhead
-                - **Aplicació**: {temps_execucio_per_tasca_min} minuts + {temps_overhead_min} minuts = {temps_execucio_per_tasca_min + temps_overhead_min} minuts
+                - **Fórmula**: Startup Overhead Time + Temps d'Execució per Tasca
+                - **Aplicació**: {startup_overhead_time} minuts + {temps_execucio_per_tasca_min} minuts = {startup_overhead_time + temps_execucio_per_tasca_min} minuts
             
             3. **Temps Total Actiu**:
-                - **Fórmula**: Nombre d'Onades * Temps Total Actiu per Onada
-                - **Aplicació**: {nombre_onades_job} onades * {temps_execucio_per_tasca_min + temps_overhead_min} minuts = **{temps_total_min_job} minuts**
+                - **Fórmula**: Nombre d'Onades * (Startup Overhead Time + Temps d'Execució per Tasca)
+                - **Aplicació**: {nombre_onades_job} onades * {startup_overhead_time + temps_execucio_per_tasca_min} minuts = **{temps_total_min_job} minuts**
             
             4. **Cost de les VM per Tasca**:
-                - **Fórmula**: ((Temps Overhead + Temps Execució Tasca) / 60) * (Cost Driver + Cost Workers)
-                - **Aplicació**: (({temps_overhead_min} + {temps_execucio_per_tasca_min}) / 60) * (€{cost_vm_job_driver} + €{cost_vm_job_workers}) = **€{cost_vm_total_job:.4f}**
+                - **Fórmula**: ((Startup Overhead Time + Temps d'Execució) / 60) * (Cost Driver + Cost Workers)
+                - **Aplicació**: (({startup_overhead_time} + {temps_execucio_per_tasca_min}) / 60) * (€{cost_vm_job_driver} + €{cost_vm_job_workers}) = **€{cost_vm_total_job:.4f}**
             
             5. **Cost de les DBUs durant l'Execució**:
-                - **Fórmula**: (Temps Execució per Tasca / 60) * Total DBUs * Cost per DBU-hora 
+                - **Fórmula**: (Temps d'Execució per Tasca / 60) * Total DBUs * Cost per DBU-hora 
                 - **Aplicació**: ({temps_execucio_per_tasca_min} / 60) * {total_DBUs_job} DBUs * €{cost_dbu_job} = **€{cost_dbu_execucio_job:.4f}**
             
             6. **Cost Total per Tasca**:
-                - **Fórmula**: Cost VM Total + Cost DBU Execució
+                - **Fórmula**: Cost VM per Tasca + Cost DBU Execució
                 - **Aplicació**: €{cost_vm_total_job:.4f} + €{cost_dbu_execucio_job:.4f} = **€{cost_per_tasca_job:.4f}**
             
             7. **Cost Total del Job Cluster**:
                 - **Fórmula**: Nombre de Tasques * Cost Total per Tasca
                 - **Aplicació**: {nombre_tasques} tasques * €{cost_per_tasca_job:.4f} = **€{cost_total_job:.4f}**
             """)
-        
-        # Metrics per Job Cluster
         st.metric(label="**Cost per tasca**", value=f"€{cost_per_tasca_job:.4f}")
         st.metric(label="**Cost total**", value=f"€{cost_total_job:.4f}")
         st.metric(label="**Temps Total Actiu**", value=f"{temps_total_min_job} minuts")
     
     with col2:
         st.header("📉 Resultats All-Purpose Cluster")
-        
-        # Secció de Detalls del Clúster
         with st.expander("📋 Detalls de l'All-Purpose Cluster"):
             st.markdown(f"""
             - **Tipus d'Instància del Driver**: {instancia_all_purpose_driver.name}
@@ -272,56 +267,51 @@ def main():
             - **DBUs per Worker**: {instancia_all_purpose_worker.DBUs}
             - **RAM per Driver**: {instancia_all_purpose_driver.RAM_GB} GB
             - **RAM per Worker**: {instancia_all_purpose_worker.RAM_GB} GB
+            - **Nombre màxim de tasques en paral·lel**: {max_parallel_tasks_all_purpose}
             """)
-        
-        # Secció de Càlculs de Cost
         with st.expander("💰 Càlculs de Cost All-Purpose Cluster"):
             st.markdown(f"""
             **Passos per calcular el cost total en un All-Purpose Cluster:**
             
             1. **Nombre d'Onades**:
-                - **Fórmula**: Nombre de Tasques / Nombre de Workers
-                - **Aplicació**: {nombre_tasques} tasques / {nombre_workers_all_purpose} workers = {nombre_onades_all_purpose} onades
+                - **Fórmula**: Nombre de Tasques / Nombre màxim de Tasques en Paral·lel
+                - **Aplicació**: {nombre_tasques} tasques / {max_parallel_tasks_all_purpose} tasques = {nombre_onades_all_purpose} onades
             
             2. **Temps Total Actiu per Onada**:
-                - **Fórmula**: Temps d'Execució per Tasca + Temps Overhead
-                - **Aplicació**: {temps_execucio_per_tasca_min} minuts + {temps_overhead_min} minuts = {temps_execucio_per_tasca_min + temps_overhead_min} minuts
+                - **Fórmula**: Startup Overhead Time + Temps d'Execució per Tasca
+                - **Aplicació**: {startup_overhead_time} minuts + {temps_execucio_per_tasca_min} minuts = {startup_overhead_time + temps_execucio_per_tasca_min} minuts
             
             3. **Temps Total Actiu**:
-                - **Fórmula**: Nombre d'Onades * Temps Total Actiu per Onada
-                - **Aplicació**: {nombre_onades_all_purpose} onades * {temps_execucio_per_tasca_min + temps_overhead_min} minuts = **{temps_total_actiu_min_all_purpose} minuts**
+                - **Fórmula**: Startup Overhead Time + (Nombre d'Onades * Temps d'Execució per Tasca)
+                - **Aplicació**: {startup_overhead_time} minuts + ({nombre_onades_all_purpose} onades * {temps_execucio_per_tasca_min} minuts) = **{temps_total_actiu_min_all_purpose} minuts**
             
             4. **Cost de les VM per Onada**:
-                - **Fórmula**: (Temps Overhead + Temps Execució Tasca) / 60) * (Cost Driver + Cost Workers)
-                - **Aplicació**: (({temps_overhead_min} + {temps_execucio_per_tasca_min}) / 60) * (€{cost_vm_all_purpose_driver} + €{cost_vm_all_purpose_workers}) = **€{(temps_overhead_min + temps_execucio_per_tasca_min)/60 * (cost_vm_all_purpose_driver + cost_vm_all_purpose_workers):.4f}**
+                - **Fórmula**: ((Startup Overhead Time + Temps d'Execució) / 60) * (Cost Driver + Cost Workers)
+                - **Aplicació**: (({startup_overhead_time} + {temps_execucio_per_tasca_min}) / 60) * (€{cost_vm_all_purpose_driver} + €{cost_vm_all_purpose_workers}) = **€{(startup_overhead_time + temps_execucio_per_tasca_min)/60 * (cost_vm_all_purpose_driver + cost_vm_all_purpose_workers):.4f}**
             
             5. **Cost de les DBUs durant l'Execució**:
-                - **Fórmula**: (Temps Execució per Tasca / 60) * Total DBUs * Cost per DBU-hora 
+                - **Fórmula**: (Temps d'Execució per Tasca / 60) * Total DBUs * Cost per DBU-hora 
                 - **Aplicació**: ({temps_execucio_per_tasca_min} / 60) * {dbus_all_purpose} DBUs * €{cost_dbu_all_purpose} = **€{(temps_execucio_per_tasca_min / 60) * dbus_all_purpose * cost_dbu_all_purpose:.4f}**
             
             6. **Cost Total per Onada**:
                 - **Fórmula**: Cost VM per Onada + Cost DBU Execució
-                - **Aplicació**: €{((temps_overhead_min + temps_execucio_per_tasca_min)/60) * (cost_vm_all_purpose_driver + cost_vm_all_purpose_workers):.4f} + €{(temps_execucio_per_tasca_min / 60) * dbus_all_purpose * cost_dbu_all_purpose:.4f} = **€{(((temps_overhead_min + temps_execucio_per_tasca_min)/60) * (cost_vm_all_purpose_driver + cost_vm_all_purpose_workers)) + ((temps_execucio_per_tasca_min / 60) * dbus_all_purpose * cost_dbu_all_purpose):.4f}**
+                - **Aplicació**: €{((startup_overhead_time + temps_execucio_per_tasca_min)/60) * (cost_vm_all_purpose_driver + cost_vm_all_purpose_workers):.4f} + €{(temps_execucio_per_tasca_min / 60) * dbus_all_purpose * cost_dbu_all_purpose:.4f} = **€{(((startup_overhead_time + temps_execucio_per_tasca_min)/60) * (cost_vm_all_purpose_driver + cost_vm_all_purpose_workers)) + ((temps_execucio_per_tasca_min / 60) * dbus_all_purpose * cost_dbu_all_purpose):.4f}**
             
             7. **Cost Total de l'All-Purpose Cluster**:
                 - **Fórmula**: Nombre d'Onades * Cost Total per Onada
-                - **Aplicació**: {nombre_onades_all_purpose} onades * €{(((temps_overhead_min + temps_execucio_per_tasca_min)/60) * (cost_vm_all_purpose_driver + cost_vm_all_purpose_workers)) + ((temps_execucio_per_tasca_min / 60) * dbus_all_purpose * cost_dbu_all_purpose):.4f} = **€{cost_total_all_purpose:.4f}**
+                - **Aplicació**: {nombre_onades_all_purpose} onades * (Cost Total per Onada) = **€{cost_total_all_purpose:.4f}**
             """)
-        
-        # Metrics per All-Purpose Cluster
         st.metric(label="**Cost total**", value=f"€{cost_total_all_purpose:.4f}")
         st.metric(label="**Temps Total Actiu**", value=f"{temps_total_actiu_min_all_purpose} minuts")
     
-    # Visualització gràfica de comparació de costos
+    # -------------------------------
+    # Graphical Comparison of Costs
     st.header("📊 Comparació de Costos")
-    
-    # Dades per al gràfic
     data_cost = pd.DataFrame({
         'Clúster': ['Job Cluster', 'All-Purpose Cluster'],
         'Cost Total (€)': [cost_total_job, cost_total_all_purpose]
     })
     
-    # Crear gràfic de barres per costos
     bar_chart_cost = alt.Chart(data_cost).mark_bar().encode(
         x=alt.X('Clúster', sort=None, title='Tipus de Clúster'),
         y=alt.Y('Cost Total (€)', title='Cost Total (€)'),
@@ -331,19 +321,14 @@ def main():
         height=400,
         title='Comparació dels Costos Totals'
     )
-    
     st.altair_chart(bar_chart_cost, use_container_width=True)
     
-    # Visualització gràfica de comparació de temps
+    # Graphical Comparison of Execution Times
     st.header("⏰ Comparació de Temps d'Execució")
-    
-    # Dades per al gràfic de temps
     data_time = pd.DataFrame({
         'Clúster': ['Job Cluster', 'All-Purpose Cluster'],
         'Temps Total Actiu (minuts)': [temps_total_min_job, temps_total_actiu_min_all_purpose]
     })
-    
-    # Crear gràfic de barres per temps
     bar_chart_time = alt.Chart(data_time).mark_bar().encode(
         x=alt.X('Clúster', sort=None, title='Tipus de Clúster'),
         y=alt.Y('Temps Total Actiu (minuts)', title='Temps Total Actiu (minuts)'),
@@ -353,19 +338,15 @@ def main():
         height=400,
         title='Comparació dels Temps Totals Actius'
     )
-    
     st.altair_chart(bar_chart_time, use_container_width=True)
     
-    # Feedback Visual addicional: Optimalitat en Temps vs Cost
+    # Scatter plot: Cost vs Time
     st.header("📈 Optimalitat en Temps vs Cost")
-    
-    # Creació d'un gràfic de dispersió combinant cost i temps
     data_optimal = pd.DataFrame({
         'Clúster': ['Job Cluster', 'All-Purpose Cluster'],
         'Cost Total (€)': [cost_total_job, cost_total_all_purpose],
         'Temps Total Actiu (minuts)': [temps_total_min_job, temps_total_actiu_min_all_purpose]
     })
-    
     scatter_chart = alt.Chart(data_optimal).mark_circle(size=100).encode(
         x=alt.X('Cost Total (€)', title='Cost Total (€)'),
         y=alt.Y('Temps Total Actiu (minuts)', title='Temps Total Actiu (minuts)'),
@@ -376,7 +357,6 @@ def main():
         height=400,
         title='Optimalitat en Temps vs Cost'
     )
-    
     st.altair_chart(scatter_chart, use_container_width=True)
     
     # Final Results and Conclusion
@@ -400,7 +380,6 @@ def main():
         st.write(f"**Estalvi en Cost:** €{estalvi:.4f}")
         st.write(f"**Percentatge d'estalvi en Cost:** {percentatge_estalvi:.2f}%")
     
-    # Footer amb informació addicional
     st.markdown("---")
     st.markdown("""
     📝 **Nota**: Aquests càlculs són aproximacions i poden variar segons la naturalesa específica de les tasques, la configuració del clúster i altres factors operatius.
